@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Árbol Binario de Búsqueda</title>
+
+  <style>
+    body{
+      font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+      padding:20px;
+      background:#0f172a;
+      color:#e6eef8;
+    }
+    h1{font-size:20px; margin-bottom:8px}
+    .card{
+      background:#0b1220;
+      border-radius:10px;
+      padding:12px;
+      margin-bottom:12px;
+      box-shadow:0 6px 18px rgba(2,6,23,.6);
+    }
+    input, button{
+      padding:8px;
+      border-radius:6px;
+      border:1px solid #263244;
+      background:#08101a;
+      color:#e6eef8;
+    }
+    button{ cursor:pointer }
+    .row{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    pre{
+      white-space:pre-wrap;
+      background:#071126;
+      padding:12px;
+      border-radius:8px;
+      overflow:auto;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+    }
+    @media(max-width:720px){
+      .grid{grid-template-columns:1fr}
+    }
+    small{opacity:.8}
+  </style>
+</head>
+<body>
+
+  <h1>CRUD de números usando Árbol Binario de Búsqueda (ABB)</h1>
+
+  <div class="card">
+    <div class="row">
+      <input id="valorInsertar" type="number" placeholder="Número a insertar">
+      <button id="btnInsertar">Insertar</button>
+
+      <input id="valorBuscar" type="number" placeholder="Número a buscar">
+      <button id="btnBuscar">Buscar</button>
+
+      <input id="valorEliminar" type="number" placeholder="Número a eliminar">
+      <button id="btnEliminar">Eliminar</button>
+    </div>
+
+    <div style="height:8px"></div>
+
+    <div class="row">
+      <input id="valorViejo" type="number" placeholder="Valor a cambiar">
+      <input id="valorNuevo" type="number" placeholder="Nuevo valor">
+      <button id="btnActualizar">Actualizar</button>
+      <button id="btnVaciar">Vaciar árbol</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Recorridos</h3>
+      <div class="row">
+        <button data-rec="inorden">InOrden</button>
+        <button data-rec="preorden">PreOrden</button>
+        <button data-rec="postorden">PostOrden</button>
+      </div>
+      <div style="height:8px"></div>
+      <small>Resultado:</small>
+      <pre id="resultado">(vacío)</pre>
+    </div>
+
+    <div class="card">
+      <h3>Visualización del árbol</h3>
+      <small>Representación tipo diagrama simple</small>
+      <pre id="dibujoArbol">(vacío)</pre>
+    </div>
+  </div>
+
+  <script>
+    //-----------------------------------------------------
+    //   Árbol Binario de Búsqueda (ABB)
+    //-----------------------------------------------------
+
+    // Nodo
+    class Nodo {
+      constructor(valor){
+        this.valor = valor;
+        this.izq = null;
+        this.der = null;
+      }
+    }
+
+    class ArbolBB {
+      constructor(){
+        this.raiz = null;
+      }
+
+      insertar(valor){
+        valor = Number(valor);
+        if(Number.isNaN(valor)) return false;
+
+        const nuevo = new Nodo(valor);
+
+        if(!this.raiz){
+          this.raiz = nuevo;
+          return true;
+        }
+
+        let actual = this.raiz;
+
+        while(true){
+          if(valor === actual.valor) return false;
+
+          if(valor < actual.valor){
+            if(!actual.izq){
+              actual.izq = nuevo;
+              return true;
+            }
+            actual = actual.izq;
+          } else {
+            if(!actual.der){
+              actual.der = nuevo;
+              return true;
+            }
+            actual = actual.der;
+          }
+        }
+      }
+
+      // ✅ cambiado → antes era "contiene"
+      buscar(valor){
+        valor = Number(valor);
+        let actual = this.raiz;
+
+        while(actual){
+          if(valor === actual.valor) return true;
+          actual = valor < actual.valor ? actual.izq : actual.der;
+        }
+        return false;
+      }
+
+      eliminar(valor){
+        valor = Number(valor);
+
+        const eliminarNodo = (nodo, val)=>{
+          if(!nodo) return null;
+
+          if(val < nodo.valor){
+            nodo.izq = eliminarNodo(nodo.izq, val);
+            return nodo;
+          }
+          if(val > nodo.valor){
+            nodo.der = eliminarNodo(nodo.der, val);
+            return nodo;
+          }
+
+          // Caso 1: sin hijos
+          if(!nodo.izq && !nodo.der) return null;
+
+          // Caso 2: un hijo
+          if(!nodo.izq) return nodo.der;
+          if(!nodo.der) return nodo.izq;
+
+          // Caso 3: dos hijos → buscar mínimo de la derecha
+          let temp = nodo.der;
+          while(temp.izq) temp = temp.izq;
+
+          nodo.valor = temp.valor;
+          nodo.der = eliminarNodo(nodo.der, temp.valor);
+          return nodo;
+        };
+
+        if(!this.buscar(valor)) return false;
+        this.raiz = eliminarNodo(this.raiz, valor);
+        return true;
+      }
+
+      actualizar(viejo, nuevo){
+        if(!this.buscar(viejo))
+          return {ok:false, msg:"El valor viejo no existe"};
+
+        if(this.buscar(nuevo))
+          return {ok:false, msg:"El nuevo valor ya existe"};
+
+        this.eliminar(viejo);
+        this.insertar(nuevo);
+        return {ok:true};
+      }
+
+      enOrden(){
+        const lista = [];
+        (function rec(n){
+          if(!n) return;
+          rec(n.izq);
+          lista.push(n.valor);
+          rec(n.der);
+        })(this.raiz);
+        return lista;
+      }
+
+      preOrden(){
+        const lista = [];
+        (function rec(n){
+          if(!n) return;
+          lista.push(n.valor);
+          rec(n.izq);
+          rec(n.der);
+        })(this.raiz);
+        return lista;
+      }
+
+      postOrden(){
+        const lista = [];
+        (function rec(n){
+          if(!n) return;
+          rec(n.izq);
+          rec(n.der);
+          lista.push(n.valor);
+        })(this.raiz);
+        return lista;
+      }
+
+      // Dibujar árbol en texto
+      mostrarArbol(){
+        if(!this.raiz) return "(vacío)";
+        const lineas = [];
+
+        const construir = (nodo, prefijo, esIzq)=>{
+          if(!nodo) return;
+          if(nodo.der) construir(nodo.der, prefijo + (esIzq ? "│   " : "    "), false);
+
+          lineas.push(prefijo + (esIzq ? "└── " : "┌── ") + nodo.valor);
+
+          if(nodo.izq) construir(nodo.izq, prefijo + (esIzq ? "    " : "│   "), true);
+        };
+
+        construir(this.raiz, "", false);
+        return lineas.join("\n");
+      }
+    }
+    
+    let arbol = new ArbolBB();
+    let $ = id => document.getElementById(id);
+
+    let resultado = $('resultado');
+    let dibujoArbol = $('dibujoArbol');
+
+    function refrescarArbol(){
+      dibujoArbol.textContent = arbol.mostrarArbol();
+    }
+
+    function mostrarRecorrido(tipo){
+      let arr = [];
+      if(tipo === "inorden")  arr = arbol.enOrden();
+      if(tipo === "preorden") arr = arbol.preOrden();
+      if(tipo === "postorden")arr = arbol.postOrden();
+      resultado.textContent = arr.length ? arr.join(" → ") : "(vacío)";
+    }
+
+    //   EVENTOS
+
+    $('btnInsertar').addEventListener("click", ()=>{
+      const v = $('valorInsertar').value;
+      if(v === "") return alert("Ingresa un número");
+
+      const ok = arbol.insertar(Number(v));
+      if(!ok) alert("Ese número ya existe");
+
+      $('valorInsertar').value = "";
+      refrescarArbol();
+      mostrarRecorrido("inorden");
+    });
+
+    $('btnBuscar').addEventListener("click", ()=>{
+      const v = $('valorBuscar').value;
+      if(v === "") return alert("Ingresa un número");
+
+      const ok = arbol.buscar(Number(v));
+      alert(ok ? `Encontrado: ${v}` : `NO encontrado: ${v}`);
+
+      $('valorBuscar').value = "";
+    });
+
+    $('btnEliminar').addEventListener("click", ()=>{
+      const v = $('valorEliminar').value;
+      if(v === "") return alert("Ingresa un número");
+
+      const ok = arbol.eliminar(Number(v));
+      if(!ok) alert("No existe ese número");
+
+      $('valorEliminar').value = "";
+      refrescarArbol();
+      mostrarRecorrido("inorden");
+    });
+
+    $('btnActualizar').addEventListener("click", ()=>{
+      const v1 = $('valorViejo').value;
+      const v2 = $('valorNuevo').value;
+
+      if(v1 === "" || v2 === "") return alert("Completa ambos valores");
+
+      const res = arbol.actualizar(Number(v1),Number(v2));
+      if(!res.ok) alert(res.msg);
+
+      $('valorViejo').value = "";
+      $('valorNuevo').value = "";
+      refrescarArbol();
+      mostrarRecorrido("inorden");
+    });
+
+    $('btnVaciar').addEventListener("click", ()=>{
+      if(!confirm("¿Vaciar árbol?")) return;
+      arbol.raiz = null;
+      dibujoArbol.textContent = "(vacío)";
+      resultado.textContent = "(vacío)";
+    });
+
+    document.querySelectorAll("button[data-rec]").forEach(b=>{
+      b.addEventListener("click", ()=> mostrarRecorrido(b.dataset.rec));
+    });
+
+    // Datos iniciales
+    [50,30,70,20,40,60,80].forEach(n => arbol.insertar(n));
+    refrescarArbol();
+    mostrarRecorrido("inorden");
+
+  </script>
+</body>
+</html>
